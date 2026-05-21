@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from typing import List, Optional
-
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -29,9 +28,7 @@ class FitnessChatbot:
 
     def _configure(self) -> None:
         if not self.api_key:
-            self._init_error = (
-                "MISTRAL_API_KEY is missing. Add it to a .env file or Streamlit secrets."
-            )
+            self._init_error = "MISTRAL_API_KEY is missing."
             return
 
         try:
@@ -45,20 +42,12 @@ class FitnessChatbot:
             self._available = False
 
     @property
-    def is_available(self) -> bool:
-        return self._available
-
-    @property
     def status_message(self) -> str:
         return "Chatbot ready." if self._available else (self._init_error or "Chatbot unavailable.")
 
     def chat(self, message: str, history: Optional[List[dict]] = None) -> str:
-        if not self._available or self._client is None:
-            return (
-                "Chatbot is offline. Set MISTRAL_API_KEY in .env (local) or "
-                "[secrets] in Streamlit Cloud, then restart the app.\n\n"
-                f"Details: {self._init_error}"
-            )
+        if not self._available or not self._client:
+            return f"Chatbot offline. Details: {self._init_error}"
 
         try:
             messages = self._format_history(history or [])
@@ -69,33 +58,21 @@ class FitnessChatbot:
                 messages=messages
             )
 
-            return (
-                response.choices[0].message.content
-                if response and response.choices
-                else "No response from model."
-            ).strip()
+            return response.choices[0].message.content.strip()
 
         except Exception as exc:
-            return f"Sorry, the chat request failed: {exc}"
+            return f"Request failed: {exc}"
 
     @staticmethod
     def _format_history(history: List[dict]) -> List[dict]:
-        """Convert Streamlit-style messages to Mistral format."""
         formatted = []
-
         for item in history:
-            role = item.get("role", "user")
-            content = item.get("content", "")
-            if not content:
-                continue
-
-            formatted.append({
-                "role": role,
-                "content": content
-            })
-
+            if item.get("content"):
+                formatted.append({
+                    "role": item.get("role", "user"),
+                    "content": item["content"]
+                })
         return formatted
-
 # """Mistral-powered fitness chatbot."""
 
 # from __future__ import annotations
