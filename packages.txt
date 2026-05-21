@@ -1,0 +1,2 @@
+# Optional: Streamlit Community Cloud system packages (usually not needed with headless OpenCV)
+libgl1
