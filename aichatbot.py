@@ -1,4 +1,4 @@
-"""Gemini-powered fitness chatbot."""
+"""Mistral-powered fitness chatbot."""
 
 from __future__ import annotations
 
@@ -19,10 +19,10 @@ Give practical, safe, evidence-informed answers about exercise form, programming
 
 
 class FitnessChatbot:
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-2.0-flash") -> None:
-        self.api_key = api_key or os.getenv("GOOGLE_API_KEY", "").strip()
+    def __init__(self, api_key: Optional[str] = None, model_name: str = "mistral-large-latest") -> None:
+        self.api_key = api_key or os.getenv("MISTRAL_API_KEY", "").strip()
         self.model_name = model_name
-        self._model = None
+        self._client = None
         self._available = False
         self._init_error: Optional[str] = None
         self._configure()
@@ -30,18 +30,16 @@ class FitnessChatbot:
     def _configure(self) -> None:
         if not self.api_key:
             self._init_error = (
-                "GOOGLE_API_KEY is missing. Add it to a .env file or Streamlit secrets."
+                "MISTRAL_API_KEY is missing. Add it to a .env file or Streamlit secrets."
             )
             return
-        try:
-            import google.generativeai as genai
 
-            genai.configure(api_key=self.api_key)
-            self._model = genai.GenerativeModel(
-                model_name=self.model_name,
-                system_instruction=SYSTEM_PROMPT,
-            )
+        try:
+            from mistralai import Mistral
+
+            self._client = Mistral(api_key=self.api_key)
             self._available = True
+
         except Exception as exc:  # pragma: no cover
             self._init_error = str(exc)
             self._available = False
@@ -57,30 +55,128 @@ class FitnessChatbot:
         return self._init_error or "Chatbot unavailable."
 
     def chat(self, message: str, history: Optional[List[dict]] = None) -> str:
-        if not self._available or self._model is None:
+        if not self._available or self._client is None:
             return (
-                "Chatbot is offline. Set GOOGLE_API_KEY in .env (local) or "
+                "Chatbot is offline. Set MISTRAL_API_KEY in .env (local) or "
                 "[secrets] in Streamlit Cloud, then restart the app.\n\n"
                 f"Details: {self._init_error}"
             )
+
         try:
-            chat = self._model.start_chat(history=self._format_history(history or []))
-            response = chat.send_message(message)
-            return (response.text or "").strip() or "No response from the model."
+            messages = self._format_history(history or [])
+            messages.append({"role": "user", "content": message})
+
+            response = self._client.chat.complete(
+                model=self.model_name,
+                messages=messages
+            )
+
+            return (response.choices[0].message.content or "").strip() or "No response from the model."
+
         except Exception as exc:
             return f"Sorry, the chat request failed: {exc}"
 
     @staticmethod
     def _format_history(history: List[dict]) -> List[dict]:
-        """Convert Streamlit-style messages to Gemini chat history."""
+        """Convert Streamlit-style messages to Mistral chat history."""
         formatted = []
         for item in history:
             role = item.get("role", "user")
             content = item.get("content", "")
             if not content:
                 continue
+
+            # Mistral uses: system | user | assistant
             if role == "assistant":
-                formatted.append({"role": "model", "parts": [content]})
+                formatted.append({"role": "assistant", "content": content})
             else:
-                formatted.append({"role": "user", "parts": [content]})
+                formatted.append({"role": "user", "content": content})
+
         return formatted
+
+# """Gemini-powered fitness chatbot."""
+
+# from __future__ import annotations
+
+# import os
+# from typing import List, Optional
+
+# from dotenv import load_dotenv
+
+# load_dotenv()
+
+# SYSTEM_PROMPT = """You are a certified-style fitness coach assistant embedded in an AI workout app.
+# Give practical, safe, evidence-informed answers about exercise form, programming, recovery, and nutrition basics.
+# - Prefer concise bullet points when listing steps.
+# - Always remind users to consult a doctor for pain, injury, or medical conditions.
+# - Do not diagnose diseases or prescribe medication.
+# - When rep counting or pose tech is mentioned, explain that the app uses joint-angle tracking (works from many camera angles).
+# """
+
+
+# class FitnessChatbot:
+#     def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-2.0-flash") -> None:
+#         self.api_key = api_key or os.getenv("GOOGLE_API_KEY", "").strip()
+#         self.model_name = model_name
+#         self._model = None
+#         self._available = False
+#         self._init_error: Optional[str] = None
+#         self._configure()
+
+#     def _configure(self) -> None:
+#         if not self.api_key:
+#             self._init_error = (
+#                 "GOOGLE_API_KEY is missing. Add it to a .env file or Streamlit secrets."
+#             )
+#             return
+#         try:
+#             import google.generativeai as genai
+
+#             genai.configure(api_key=self.api_key)
+#             self._model = genai.GenerativeModel(
+#                 model_name=self.model_name,
+#                 system_instruction=SYSTEM_PROMPT,
+#             )
+#             self._available = True
+#         except Exception as exc:  # pragma: no cover
+#             self._init_error = str(exc)
+#             self._available = False
+
+#     @property
+#     def is_available(self) -> bool:
+#         return self._available
+
+#     @property
+#     def status_message(self) -> str:
+#         if self._available:
+#             return "Chatbot ready."
+#         return self._init_error or "Chatbot unavailable."
+
+#     def chat(self, message: str, history: Optional[List[dict]] = None) -> str:
+#         if not self._available or self._model is None:
+#             return (
+#                 "Chatbot is offline. Set GOOGLE_API_KEY in .env (local) or "
+#                 "[secrets] in Streamlit Cloud, then restart the app.\n\n"
+#                 f"Details: {self._init_error}"
+#             )
+#         try:
+#             chat = self._model.start_chat(history=self._format_history(history or []))
+#             response = chat.send_message(message)
+#             return (response.text or "").strip() or "No response from the model."
+#         except Exception as exc:
+#             return f"Sorry, the chat request failed: {exc}"
+
+#     @staticmethod
+#     def _format_history(history: List[dict]) -> List[dict]:
+#         """Convert Streamlit-style messages to Gemini chat history."""
+#         formatted = []
+#         for item in history:
+#             role = item.get("role", "user")
+#             content = item.get("content", "")
+#             if not content:
+#                 continue
+#             if role == "assistant":
+#                 formatted.append({"role": "model", "parts": [content]})
+#             else:
+#                 formatted.append({"role": "user", "parts": [content]})
+#         return formatted
