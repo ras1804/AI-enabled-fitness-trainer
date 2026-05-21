@@ -1,6 +1,4 @@
-# Pinned for compatibility: MediaPipe 0.10.x + Streamlit + NumPy 1.x
 streamlit>=1.33.0,<1.42.0
-opencv-python-headless>=4.8.0,<4.11.0
 mediapipe>=0.10.9,<0.10.21
 numpy>=1.24.0,<2.0.0
 pandas>=2.0.0,<3.0.0
@@ -9,3 +7,4 @@ google-generativeai>=0.8.0,<0.9.0
 Pillow>=10.0.0,<12.0.0
 streamlit-webrtc>=0.47.1,<0.49.0
 av>=10.0.0,<13.0.0
+opencv-python-headless>=4.8.0,<4.11.0
